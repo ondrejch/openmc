@@ -1649,21 +1649,56 @@ in the problem and is specified using a :ref:`mesh_element`.
 ``<birth_mesh>`` Element
 -------------------------
 
-The ``<birth_mesh>`` element indicates the ID of a mesh used to tag banked
-fission sites for post-processing of fission-matrix and fission-to-fission
-time data. When this element is present, every site banked during an
-eigenvalue calculation is tagged with the bin of the *birth position of the
-neutron that produced the site* (matching the binning used by the
-:ref:`mesh born filter <meshbornfilter>`); sites whose creating neutron was
-born outside the mesh are tagged with ``-1``. The mesh must be defined in the
-same settings file using a :ref:`mesh_element`.
+The ``<birth_mesh>`` element indicates the ID of a mesh used to tag the fission
+sites banked in an eigenvalue calculation, for the post-processing of
+fission-matrix data. When this element is present, every site banked in the
+fission bank, in continuous-energy and in multigroup mode, is tagged with the
+bin of the mesh that contains the *birth position of the neutron that produced
+the site*, or with ``-1`` if that position is outside the mesh. Only an
+eigenvalue calculation banks fission sites, so in fixed-source mode the element
+has no effect and is ignored with a warning.
 
-The tags are written to statepoints (and source files) as a ``birth_mesh_bin``
-dataset aligned by index with the ``source_bank`` dataset; the referenced
-mesh ID is recorded in a ``birth_mesh_id`` attribute. The delayed group and
-time of each banked site are available in the ``source_bank`` compound type
-itself. Enabling birth tagging does not change the transport physics or any
-tally result: the tags consume no random numbers and alter no scoring.
+The birth position is the position at which the neutron was started from a
+site. For a neutron started from the source bank, this is the position of its
+fission site, where it was emitted. Secondary neutrons, such as the additional
+neutrons of :math:`(n,xn)` reactions, are started at the collision that
+produced them, and particles created by weight-window splitting at the point of
+the split, so the fission sites that they produce are tagged with the bin of
+that position rather than with the bin of the source site of the history. This
+is the same notion of birth as used by :class:`openmc.MeshBornFilter` and, for
+the time since birth, by :class:`openmc.LifetimeMomentFilter`, so that the tags
+are consistent with tallies using these filters.
+
+The tags are 0-based bin indices numbered in the same order as the bins of a
+:class:`openmc.MeshFilter` on the mesh: for a mesh with :math:`n_x \times n_y
+\times n_z` elements and 0-based element indices :math:`(i_x, i_y, i_z)`, the
+bin is :math:`i_x + n_x (i_y + n_y i_z)`, with :math:`x` varying fastest. Only
+regular meshes can be used, and no translation is applied, so the tags only
+match the bins of a mesh born filter that uses the same mesh without a
+translation. The mesh must be defined in the same settings file using a
+:ref:`mesh_element`.
+
+The tags are written as an int32 ``birth_mesh_bin`` dataset, aligned by index
+with the ``source_bank`` dataset, wherever the source bank of the eigenvalue
+calculation is written in HDF5 format: in state point files that contain the
+source bank and in the source point files written according to the
+``<source_point>`` element (``source.<batch>.h5`` and, with
+``overwrite_latest``, ``source.h5``). These files also carry the mesh ID in a
+``birth_mesh_id`` attribute; a state point file of a tagged calculation has
+this attribute even if it does not contain the source bank. Tags are not written to surface
+source files, to the initial source file, or to MCPL files. When a source file
+that contains a ``birth_mesh_bin`` dataset is read, for a restart or as a file
+source, the dataset must have the same length as ``source_bank``.
+
+The delayed group and the time of each banked site are available in the
+``source_bank`` compound type itself. The time of a site is the absolute time
+at which its neutron is emitted: the particle clock is not reset between
+generations, so it accumulates the flight times and delayed emission times of
+all ancestors back to the initial source. It is not the time since the birth of
+the neutron that produced the site; fission-to-fission times are tallied with
+:class:`openmc.LifetimeMomentFilter`. Enabling birth tagging does not change the
+transport or any tally result: the tags consume no random numbers and alter no
+scoring.
 
 -------------------------------
 ``<use_decay_photons>`` Element

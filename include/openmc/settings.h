@@ -50,10 +50,10 @@ class RegularMesh;
 
 namespace settings {
 
-// Fission bank birth tagging
-extern int birth_mesh_id;              //!< Mesh ID used to tag banked fission
-                                       //!< sites (0: no tagging)
-extern const RegularMesh* birth_mesh;  //!< Resolved birth-tag mesh
+// Fission bank birth tagging (see SourceSite::birth_mesh_bin), which is not
+// enabled in fixed-source mode; nullptr and 0 when no tagging is done.
+extern int birth_mesh_id;             //!< ID of the <birth_mesh> mesh
+extern const RegularMesh* birth_mesh; //!< Mesh used to tag fission sites
 
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?

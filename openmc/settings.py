@@ -47,6 +47,16 @@ class Settings:
         interactions.
     batches : int
         Number of batches to simulate
+    birth_mesh : openmc.RegularMesh
+        Mesh used to tag the fission sites banked in an eigenvalue calculation
+        with the 0-based bin (x varying fastest) of the birth position of the
+        neutron that produced each site, or -1 outside the mesh. The birth
+        position is where that neutron was started from a site: its fission
+        site, or the collision or split point for (n,xn) secondaries and split
+        particles, as for :class:`openmc.MeshBornFilter`. The tags are written
+        to state point and source point files as a ``birth_mesh_bin`` dataset
+        aligned with the source bank (see :ref:`io_statepoint`). Has no effect
+        in fixed-source mode.
     confidence_intervals : bool
         If True, uncertainties on tally results will be reported as the
         half-width of the 95% two-sided confidence interval. If False,
@@ -1192,8 +1202,9 @@ class Settings:
 
     @property
     def birth_mesh(self) -> RegularMesh:
-        """Mesh used to tag banked fission sites with the bin of the
-        creating neutron's birth position"""
+        """Mesh used to tag banked fission sites with the bin of the birth
+        position of the neutron that produced them (see the ``birth_mesh``
+        attribute of :class:`Settings`)"""
         return self._birth_mesh
 
     @birth_mesh.setter

@@ -11,6 +11,7 @@
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/mgxs_interface.h"
 #include "openmc/particle.h"
@@ -140,6 +141,13 @@ void create_fission_sites(Particle& p)
     site.particle = ParticleType::neutron();
     site.time = p.time();
     site.wgt = 1. / weight;
+
+    // Tag the site with the bin of the creating neutron's birth position in
+    // the birth mesh, if one was specified. Note: no random numbers are
+    // consumed here, so tagging does not perturb the transport history.
+    if (settings::birth_mesh) {
+      site.birth_mesh_bin = settings::birth_mesh->get_bin(p.r_born());
+    }
 
     // Sample the cosine of the angle, assuming fission neutrons are emitted
     // isotropically

@@ -21,6 +21,11 @@ The current version of the statepoint file format is 18.2.
                are present (1) or not (0).
              - **source_present** (*int*) -- Flag indicating whether the source
                bank is present (1) or not (0).
+             - **birth_mesh_id** (*int*) -- ID of the mesh used to tag fission
+               sites with the ``<birth_mesh>`` settings element. Only present
+               when `run_mode` is 'eigenvalue' and fission bank tagging is
+               enabled, even if the source bank is not stored in the file
+               (e.g., because it is written to a separate source file).
 
 :Datasets: - **seed** (*int8_t*) -- Pseudo-random number generator seed.
            - **stride** (*uint64_t*) -- Pseudo-random number generator stride.
@@ -59,11 +64,13 @@ The current version of the statepoint file format is 18.2.
              (PDG number), respectively. Only present when `run_mode` is
              'eigenvalue'.
            - **birth_mesh_bin** (*int[]*) -- Fission bank birth tags, aligned
-             by index with ``source_bank``: the bin of the birth position of
-             the neutron that produced each site, in the mesh referenced by
-             the ``birth_mesh_id`` attribute (``-1`` if outside that mesh).
-             Only present when the ``<birth_mesh>`` settings element was
-             specified in the settings input and ``source_bank`` is present.
+             by index with ``source_bank``: for each site, the 0-based bin,
+             numbered with :math:`x` varying fastest as for a mesh filter, of
+             the birth position of the neutron that produced the site in the
+             mesh referenced by the ``birth_mesh_id`` attribute, or ``-1`` if
+             that position is outside the mesh. Only present when
+             ``source_bank`` is present and the ``<birth_mesh>`` settings
+             element was specified for an eigenvalue calculation.
 
 **/tallies/**
 

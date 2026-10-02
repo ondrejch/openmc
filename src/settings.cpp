@@ -898,8 +898,16 @@ void read_settings_xml(pugi::xml_node root)
       dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
     if (!m)
       fatal_error("Only regular meshes can be used as a birth mesh");
-    birth_mesh_id = temp;
-    birth_mesh = m;
+
+    // Only an eigenvalue calculation banks fission sites in the fission bank,
+    // so birth tagging has no effect in fixed-source mode
+    if (run_mode == RunMode::FIXED_SOURCE) {
+      warning("The <birth_mesh> element has no effect in fixed-source mode "
+              "and is ignored.");
+    } else {
+      birth_mesh_id = temp;
+      birth_mesh = m;
+    }
   }
 
   // Check if the user has specified to write state points

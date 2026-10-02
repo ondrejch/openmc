@@ -56,10 +56,17 @@ struct SourceSite {
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
   int n_collision {0};
-  // Fission bank tag: bin of the creating neutron's birth position in the
-  // mesh specified by the <birth_mesh> settings element (-1 if the position
-  // falls outside the mesh). Written to statepoints as the separate
-  // "birth_mesh_bin" dataset when the feature is enabled.
+  // Fission bank birth tag: for a fission site banked in an eigenvalue
+  // calculation with a <birth_mesh>, the 0-based bin of the mesh (x varying
+  // fastest, as for MeshFilter bins) that contains the birth position,
+  // Particle::r_born(), of the neutron that produced the site, or -1 if that
+  // position is outside the mesh. The birth position is where the neutron was
+  // started from a site: its fission site for a neutron from the source bank,
+  // but the collision point for (n,xn) secondaries and the split point for
+  // particles created by splitting. This is the same notion of birth as
+  // MeshBornFilter and LifetimeMomentFilter use. -1 for any other site. Not
+  // part of the "source_bank" compound type; written as the separate
+  // "birth_mesh_bin" dataset of eigenvalue source banks.
   int birth_mesh_bin {-1};
 };
 
