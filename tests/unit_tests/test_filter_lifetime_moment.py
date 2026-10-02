@@ -187,11 +187,13 @@ def test_lifetime_moment_filter_lib_runtime_tally(one_group_model):
         assert analog.estimator == 'analog'
 
         # The run-time tally scores the same events as the tally read from
-        # tallies.xml, which also uses a collision estimator
+        # tallies.xml, which also uses a collision estimator. Scores from
+        # several OpenMP threads are summed in a run-dependent order, so the
+        # two means agree to rounding (observed ~1e-16 relative), not bitwise
         xml_tally = openmc.lib.tallies[7]
         assert xml_tally.estimator == 'collision'
         assert runtime.num_realizations == xml_tally.num_realizations > 0
-        np.testing.assert_array_equal(runtime.mean, xml_tally.mean)
+        np.testing.assert_allclose(runtime.mean, xml_tally.mean, rtol=1e-12, atol=0.0)
         assert np.all(runtime.mean > 0.0)
     finally:
         one_group_model.finalize_lib()
