@@ -133,6 +133,9 @@ The current version of the statepoint file format is 18.2.
              present for 'energyfunction' filters.
            - **bins** (*int[]* or *double[]*) -- Value for each filter bin of
              this type. Not present for 'energyfunction' filters.
+           - **order** (*int*) -- Highest order of a functional expansion
+             filter, such as a 'lifetimemoment' filter, used in place of
+             **bins**.
            - **energy** (*double[]*) -- Energy grid points for energyfunction
              interpolation. Only used for 'energyfunction' filters.
            - **y** (*double[]*) -- Interpolant values for energyfunction

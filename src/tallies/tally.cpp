@@ -172,7 +172,10 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::COLLISION;
     } else if (filt_type == FilterType::PARTICLE_PRODUCTION) {
       estimator_ = TallyEstimator::ANALOG;
-    } else if (filt_type == FilterType::REACTION) {
+    } else if (filt_type == FilterType::REACTION ||
+               filt_type == FilterType::LIFETIME_MOMENT) {
+      // A lifetime moment weight varies along a track, so it cannot weight a
+      // track-length estimate; collision and analog estimators are both valid
       if (estimator_ == TallyEstimator::TRACKLENGTH) {
         estimator_ = TallyEstimator::COLLISION;
       }
