@@ -150,12 +150,22 @@ class LifetimeMomentFilter(ExpansionFilter):
     produces. The bin of order :math:`n` has the units of the score multiplied
     by :math:`\mathrm{s}^n`; the bin of order zero equals the score itself.
 
-    The time since birth restarts from zero whenever a particle is started
-    from a site, which includes secondary particles such as the extra neutrons
-    of (n,xn) reactions and particles created by weight-window splitting.
+    The time since birth is not carried over to secondary or split particles
+    that continue a history: the extra neutrons of (n,xn) reactions and
+    particles created by weight-window splitting restart from zero at the
+    collision or split that created them. This is a limitation, shared with
+    :class:`MeshBornFilter` and the IFP lifetime, that biases the moments of
+    order one and higher low when such reactions or weight windows are
+    present; see :ref:`usersguide_lifetime_moments`.
+
     Because the filter weight changes along a track, a tally with this filter
-    uses a collision estimator unless an analog estimator is requested; the
-    track-length estimator cannot be used.
+    uses a collision estimator unless an analog estimator is requested or
+    required by another filter or score; the track-length estimator cannot be
+    used. Collision and analog estimators score nothing in void regions, and
+    in mesh surface current tallies the time since birth is taken at the end
+    of the flight rather than at the surface crossing.
+
+    .. versionadded:: 0.16.1
 
     Parameters
     ----------
@@ -196,7 +206,7 @@ class LifetimeMomentFilter(ExpansionFilter):
         if group['type'][()].decode() != cls.short_name.lower():
             raise ValueError("Expected HDF5 data for filter type '"
                              + cls.short_name.lower() + "' but got '"
-                             + group['type'][()].decode() + " instead")
+                             + group['type'][()].decode() + "' instead")
 
         filter_id = int(group.name.split('/')[-1].lstrip('filter '))
 

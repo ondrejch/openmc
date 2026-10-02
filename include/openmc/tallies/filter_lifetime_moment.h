@@ -12,8 +12,11 @@ namespace openmc {
 //!
 //! The weight of bin n (n = 0, ..., order) is tau^n, where tau is the time in
 //! seconds since the particle was started from its source site (see
-//! Particle::lifetime). Because the weight varies along a track, tallies using
-//! this filter are scored with a collision or analog estimator.
+//! Particle::lifetime). Secondary particles of (n,xn) reactions and split
+//! particles restart tau at the collision or split that created them, a
+//! limitation shared with MeshBornFilter and the IFP lifetime. Because the
+//! weight varies along a track, tallies using this filter are scored with a
+//! collision or analog estimator.
 //==============================================================================
 
 class LifetimeMomentFilter : public Filter {

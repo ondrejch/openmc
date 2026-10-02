@@ -161,3 +161,29 @@ TEST_CASE("Lifetime moment filter avoids the track-length estimator")
   // An analog estimator required by another filter is kept
   REQUIRE(tally_estimator(105, both_ids, "") == TallyEstimator::ANALOG);
 }
+
+TEST_CASE("Run-time tallies with a lifetime moment filter avoid track length")
+{
+  auto* lifetime_filter = Filter::create("lifetimemoment");
+  auto* energy_filter = Filter::create("energy");
+
+  // A tally created at run time keeps its estimator until it is checked
+  Tally* tally = Tally::create();
+  tally->add_filter(lifetime_filter);
+  REQUIRE(tally->estimator_ == TallyEstimator::TRACKLENGTH);
+  tally->check_estimator();
+  REQUIRE(tally->estimator_ == TallyEstimator::COLLISION);
+
+  // An analog estimator is kept
+  Tally* analog = Tally::create();
+  analog->add_filter(lifetime_filter);
+  analog->estimator_ = TallyEstimator::ANALOG;
+  analog->check_estimator();
+  REQUIRE(analog->estimator_ == TallyEstimator::ANALOG);
+
+  // Other tallies are not changed
+  Tally* other = Tally::create();
+  other->add_filter(energy_filter);
+  other->check_estimator();
+  REQUIRE(other->estimator_ == TallyEstimator::TRACKLENGTH);
+}

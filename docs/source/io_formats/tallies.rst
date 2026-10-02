@@ -336,7 +336,8 @@ should be set to:
       </filter>
 
   A tally with this filter uses a collision estimator unless an analog
-  estimator is requested; a track-length estimator cannot be used.
+  estimator is requested or required by another filter or score; a
+  track-length estimator cannot be used.
 
 :particle:
   A list of particle identifiers to tally, specified as strings (e.g.,

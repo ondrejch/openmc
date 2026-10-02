@@ -14,10 +14,14 @@ which gives M_n(nu-fission) = nu Sigma_f n! / (Sigma_a^(n+1) v^n) and
 M_n(absorption) = n! / (Sigma_a v)^n. Analog absorption and fission estimators
 score at the absorption time, which is exponentially distributed with rate
 v Sigma_a, and have the same expectations; because every history ends with one
-absorption at unit weight, their zeroth moments are exact. In an eigenvalue
-calculation the same expressions hold per source neutron because fission
-neutrons are banked rather than tracked, with k = nu Sigma_f / Sigma_a and the
-prompt and delayed parts in the proportions 1 - beta and beta.
+absorption at unit weight, their zeroth moments are exact. In the fixed-source
+calculation the source neutrons are emitted uniformly over 1 ms, much longer
+than their mean lifetime 1 / (v Sigma_a) = 40 us; the moments of the time since
+birth are unaffected, but moments of the absolute time would not match the
+closed forms. In an eigenvalue calculation the same expressions hold per source
+neutron because fission neutrons are banked rather than tracked, with
+k = nu Sigma_f / Sigma_a and the prompt and delayed parts in the proportions
+1 - beta and beta.
 
 The tallies are checked against these closed forms to within four standard
 deviations instead of being hashed and compared with a results_true.dat file.
@@ -140,6 +144,7 @@ def test_lifetime_moment_fixed_source(tmp_path):
     model.settings.batches = 50
     model.settings.particles = 10000
     model.settings.create_fission_neutrons = False
+    model.settings.source[0].time = openmc.stats.Uniform(0.0, 1.0e-3)
 
     # Default estimator, which the filter turns into a collision estimator
     collision = openmc.Tally()

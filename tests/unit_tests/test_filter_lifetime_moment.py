@@ -164,3 +164,34 @@ def test_lifetime_moment_filter_lib(one_group_model):
                 energy_filter._index, c_int())
     finally:
         one_group_model.finalize_lib()
+
+
+def test_lifetime_moment_filter_lib_runtime_tally(one_group_model):
+    one_group_model.init_lib(output=False)
+    try:
+        # Tallies created at run time keep the estimator they are given until
+        # the simulation is initialized
+        runtime = openmc.lib.Tally()
+        runtime.filters = [openmc.lib.LifetimeMomentFilter(2)]
+        runtime.scores = ['absorption']
+        assert runtime.estimator == 'tracklength'
+        analog = openmc.lib.Tally()
+        analog.filters = [openmc.lib.LifetimeMomentFilter(2)]
+        analog.scores = ['absorption']
+        analog.estimator = 'analog'
+
+        # The track-length estimator is replaced by a collision estimator, and
+        # an analog estimator is kept
+        openmc.lib.run(output=False)
+        assert runtime.estimator == 'collision'
+        assert analog.estimator == 'analog'
+
+        # The run-time tally scores the same events as the tally read from
+        # tallies.xml, which also uses a collision estimator
+        xml_tally = openmc.lib.tallies[7]
+        assert xml_tally.estimator == 'collision'
+        assert runtime.num_realizations == xml_tally.num_realizations > 0
+        np.testing.assert_array_equal(runtime.mean, xml_tally.mean)
+        assert np.all(runtime.mean > 0.0)
+    finally:
+        one_group_model.finalize_lib()

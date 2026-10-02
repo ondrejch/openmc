@@ -132,10 +132,10 @@ The current version of the statepoint file format is 18.2.
 
 **/tallies/filters/filter <uid>/**
 
-:Datasets: - **type** (*char[]*) -- Type of the j-th filter. Can be 'universe',
+:Datasets: - **type** (*char[]*) -- Type of the j-th filter, e.g., 'universe',
              'material', 'cell', 'cellborn', 'surface', 'mesh', 'energy',
              'energyout', 'distribcell', 'mu', 'polar', 'azimuthal',
-             'delayedgroup', or 'energyfunction'.
+             'delayedgroup', 'energyfunction', or 'lifetimemoment'.
            - **n_bins** (*int*) -- Number of bins for the j-th filter. Not
              present for 'energyfunction' filters.
            - **bins** (*int[]* or *double[]*) -- Value for each filter bin of

@@ -174,8 +174,11 @@ Tally::Tally(pugi::xml_node node)
       estimator_ = TallyEstimator::ANALOG;
     } else if (filt_type == FilterType::REACTION ||
                filt_type == FilterType::LIFETIME_MOMENT) {
-      // A lifetime moment weight varies along a track, so it cannot weight a
-      // track-length estimate; collision and analog estimators are both valid
+      // These filters need information that is only defined at a collision
+      // (the reaction that occurred, or the time since birth, which varies
+      // along a track), so they cannot be used with a track-length estimator.
+      // Collision and analog estimators are both valid, so only the default
+      // track-length estimator is replaced.
       if (estimator_ == TallyEstimator::TRACKLENGTH) {
         estimator_ = TallyEstimator::COLLISION;
       }
@@ -824,6 +827,20 @@ void Tally::init_triggers(pugi::xml_node node)
         triggers_.push_back({metric, threshold, ignore_zeros, i_score});
       }
     }
+  }
+}
+
+void Tally::check_estimator()
+{
+  // A lifetime moment weight varies along a track, so it cannot weight a
+  // track-length estimate (see the selection in the constructor)
+  if (estimator_ == TallyEstimator::TRACKLENGTH &&
+      this->has_filter(FilterType::LIFETIME_MOMENT)) {
+    estimator_ = TallyEstimator::COLLISION;
+    warning(fmt::format("Tally {} has a lifetime moment filter, which cannot "
+                        "be used with a track-length estimator. A collision "
+                        "estimator is used instead.",
+      id_));
   }
 }
 

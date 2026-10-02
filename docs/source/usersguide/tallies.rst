@@ -83,22 +83,37 @@ events, so their statistical errors are correlated, which generally makes
 ratios of bins more precise than ratios of independent tallies.
 
 The time since birth, :math:`\tau`, is measured in seconds from the moment the
-particle was started from its source site and is reset whenever a particle is
-started from a site. For a source particle in a fixed-source calculation this
-is the time elapsed since its emission. In an eigenvalue calculation, a neutron
-is started from the fission site that produced it, so for a delayed neutron
+particle was started from its source site. For a source particle in a
+fixed-source calculation this is the time elapsed since its emission, and the
+fission neutrons transported in a fixed-source calculation are likewise
+started from their fission sites. In an eigenvalue calculation, a neutron is
+started from the fission site that produced it, so for a delayed neutron
 :math:`\tau` counts from its emission rather than from the fission that created
-its precursor. Secondary particles, such as the additional neutrons from
-:math:`(n,xn)` reactions or fission neutrons transported in a fixed-source
-calculation, and particles created by weight-window splitting restart from
-:math:`\tau = 0`. This is the same notion of birth as used by
-:class:`openmc.MeshBornFilter` and :class:`openmc.CellBornFilter`.
+its precursor.
+
+.. note:: The time since birth is not carried over to secondary or split
+   particles that continue a history. The additional neutrons of
+   :math:`(n,xn)` reactions and the particles created by weight-window
+   splitting restart from :math:`\tau = 0` at the collision or split that
+   created them, instead of continuing from the birth of the neutron of the
+   source site. This is a limitation of the implementation rather than part of
+   the definition of the moments: when such reactions or weight windows are
+   present, the moments of order :math:`n \ge 1` are biased low. The birth
+   position and birth cell used by :class:`openmc.MeshBornFilter` and
+   :class:`openmc.CellBornFilter`, and the neutron lifetime of the iterated
+   fission probability method, have the same limitation.
 
 Because the filter weight changes along a track, a tally with this filter uses
-a collision estimator unless an analog estimator is requested; requesting a
-track-length estimator results in an error. (When tallies are created at run
-time through :mod:`openmc.lib`, set the estimator to ``'collision'`` or
-``'analog'`` explicitly.)
+a collision estimator unless an analog estimator is requested or required by
+another filter or score (for example, by an :class:`openmc.EnergyoutFilter`);
+requesting a track-length estimator results in an error. A tally created at
+run time through :mod:`openmc.lib` that still has the default track-length
+estimator is switched to a collision estimator, with a warning, when the
+simulation is initialized. Since collision and analog estimators only score at
+collisions, a tally with this filter scores nothing in void regions. In surface
+current tallies on a mesh (:class:`openmc.MeshSurfaceFilter`), :math:`\tau` is
+the time since birth at the end of the flight that crossed the mesh surface
+rather than at the crossing, as for :class:`openmc.TimeFilter`.
 
 A typical use is to obtain fission-to-fission time moments in an eigenvalue
 calculation by combining the filter with a fission production score. The
