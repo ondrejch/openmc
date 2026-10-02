@@ -144,7 +144,8 @@ attributes/sub-elements:
     The type of the filter. Accepted options are "cell", "cellfrom",
     "cellborn", "surface", "material", "universe", "energy", "energyout",
     "mu", "polar", "azimuthal", "mesh", "distribcell", "delayedgroup",
-    "energyfunction", "particle", "particleproduction", and "lifetimemoment".
+    "delayedgroupborn", "energyfunction", "particle", "particleproduction",
+    and "lifetimemoment".
 
   :bins:
      A description of the bins for each type of filter can be found in
@@ -316,6 +317,26 @@ should be set to:
   .. code-block:: xml
 
       <filter type="delayedgroup" bins="1 2 3 4 5 6" />
+
+:delayedgroupborn:
+  A list of distinct birth delayed groups of the scoring particle, each between
+  0 and the maximum number of delayed groups (8). The particle is binned by the
+  delayed group of the source site it was started from: 0 for a neutron born
+  prompt, or for a particle started from a site that is not a fission site
+  (an external source particle, a secondary particle, or a particle created by
+  splitting), and :math:`g \ge 1` for a delayed neutron emitted by a precursor
+  of delayed group :math:`g` (see :ref:`usersguide_delayed_group_born`). For
+  instance, to separate prompt-born neutrons from the delayed neutrons of each
+  of the 6 delayed groups in the ENDF/B-VII.1 library the filter is specified
+  as:
+
+  .. code-block:: xml
+
+      <filter type="delayedgroupborn" bins="0 1 2 3 4 5 6" />
+
+  Unlike ``delayedgroup`` filters, which bin the delayed neutrons produced in
+  an event, ``delayedgroupborn`` filters can be used with any score and any
+  estimator.
 
 :energyfunction:
   ``energyfunction`` filters do not use the ``bins`` entry.  Instead

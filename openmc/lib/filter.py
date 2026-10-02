@@ -19,6 +19,7 @@ from .mesh import _get_mesh
 __all__ = [
     'Filter', 'AzimuthalFilter', 'CellFilter', 'CellbornFilter', 'CellfromFilter',
     'CellInstanceFilter', 'CollisionFilter', 'DistribcellFilter', 'DelayedGroupFilter',
+    'DelayedGroupBornFilter',
     'EnergyFilter', 'EnergyoutFilter', 'EnergyFunctionFilter', 'LegendreFilter',
     'LifetimeMomentFilter',
     'MaterialFilter', 'MaterialFromFilter', 'MeshFilter', 'MeshBornFilter',
@@ -275,6 +276,10 @@ class CellInstanceFilter(Filter):
 
 class DelayedGroupFilter(Filter):
     filter_type = 'delayedgroup'
+
+
+class DelayedGroupBornFilter(Filter):
+    filter_type = 'delayedgroupborn'
 
 
 class DistribcellFilter(Filter):
@@ -744,6 +749,7 @@ _FILTER_TYPE_MAP = {
     'cellinstance': CellInstanceFilter,
     'collision': CollisionFilter,
     'delayedgroup': DelayedGroupFilter,
+    'delayedgroupborn': DelayedGroupBornFilter,
     'distribcell': DistribcellFilter,
     'energy': EnergyFilter,
     'energyout': EnergyoutFilter,

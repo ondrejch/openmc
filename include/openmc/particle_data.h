@@ -530,6 +530,7 @@ private:
   int event_nuclide_;
   int event_mt_;
   int delayed_group_ {0};
+  int delayed_group_born_ {0};
   int parent_nuclide_ {-1};
 
   int n_bank_ {0};
@@ -671,6 +672,21 @@ public:
   const int& event_mt() const { return event_mt_; }
   int& delayed_group() { return delayed_group_; } // delayed group
   const int& delayed_group() const { return delayed_group_; }
+
+  // Delayed group of the source site that the particle was started from, used
+  // by DelayedGroupBornFilter: g = 1, ..., MAX_DELAYED_GROUPS for a delayed
+  // fission neutron of precursor group g, and 0 for a prompt fission neutron
+  // and for a site that is not a fission site, such as an external source
+  // site or the sites that create_secondary() and split() bank for the extra
+  // neutrons of (n,xn) reactions and for split particles, which do not carry
+  // the group over. It is set only in Particle::from_source() and stays
+  // constant until the particle is started from another site. delayed_group()
+  // is set from the same site, but in multigroup mode create_fission_sites()
+  // overwrites it with the group of each fission site that the particle
+  // creates.
+  int& delayed_group_born() { return delayed_group_born_; }
+  const int& delayed_group_born() const { return delayed_group_born_; }
+
   const int& parent_nuclide() const { return parent_nuclide_; }
   int& parent_nuclide() { return parent_nuclide_; } // Parent nuclide
 

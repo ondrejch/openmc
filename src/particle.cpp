@@ -187,6 +187,9 @@ void Particle::from_source(const SourceSite* src)
   time_last() = src->time;
   parent_nuclide() = src->parent_nuclide;
   delayed_group() = src->delayed_group;
+  // Birth delayed group, kept separately because delayed_group() may change
+  // during transport (see ParticleData::delayed_group_born())
+  delayed_group_born() = src->delayed_group;
 
   // Convert signed surface ID to signed index
   if (src->surf_id != SURFACE_NONE) {

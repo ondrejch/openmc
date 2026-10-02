@@ -1,4 +1,5 @@
 #include "openmc/particle.h"
+#include "openmc/tallies/filter_delayedgroupborn.h"
 #include "openmc/tallies/filter_energy.h"
 #include "openmc/tallies/filter_legendre.h"
 #include "openmc/tallies/filter_lifetime_moment.h"
@@ -186,4 +187,54 @@ TEST_CASE("Run-time tallies with a lifetime moment filter avoid track length")
   other->add_filter(energy_filter);
   other->check_estimator();
   REQUIRE(other->estimator_ == TallyEstimator::TRACKLENGTH);
+}
+
+TEST_CASE("Delayed group born filter bins by the birth delayed group")
+{
+  auto* filter =
+    dynamic_cast<DelayedGroupBornFilter*>(Filter::create("delayedgroupborn"));
+  REQUIRE(filter);
+  REQUIRE(filter->type_str() == "delayedgroupborn");
+  REQUIRE(filter->type() == FilterType::DELAYED_GROUP_BORN);
+
+  vector<int> groups {0, 2, 3};
+  filter->set_groups(groups);
+  REQUIRE(filter->n_bins() == 3);
+  REQUIRE(filter->text_label(0) == "Born Prompt");
+  REQUIRE(filter->text_label(2) == "Born from Delayed Group 3");
+
+  // Groups outside [0, MAX_DELAYED_GROUPS] and repeated groups are rejected,
+  // and the filter is left unchanged
+  vector<int> negative {0, -1};
+  vector<int> too_large {MAX_DELAYED_GROUPS + 1};
+  vector<int> repeated {1, 2, 1};
+  REQUIRE_THROWS_AS(filter->set_groups(negative), std::invalid_argument);
+  REQUIRE_THROWS_AS(filter->set_groups(too_large), std::invalid_argument);
+  REQUIRE_THROWS_AS(filter->set_groups(repeated), std::invalid_argument);
+  REQUIRE(filter->groups() == groups);
+  REQUIRE(filter->n_bins() == 3);
+
+  // The bin is given by the birth delayed group, not by delayed_group(), which
+  // multigroup fission site creation overwrites
+  Particle p;
+  p.delayed_group_born() = 2;
+  p.delayed_group() = 3;
+  FilterMatch match;
+  filter->get_all_bins(p, TallyEstimator::TRACKLENGTH, match);
+  REQUIRE(match.bins_ == vector<int> {1});
+  REQUIRE(match.weights_ == vector<double> {1.0});
+
+  // A birth group without a bin is not matched
+  p.delayed_group_born() = 1;
+  FilterMatch no_match;
+  filter->get_all_bins(p, TallyEstimator::ANALOG, no_match);
+  REQUIRE(no_match.bins_.empty());
+
+  // A tally does not treat the filter as a delayed group filter, so any score
+  // can be used with it
+  Tally* tally = Tally::create();
+  tally->add_filter(filter);
+  REQUIRE(tally->delayedgroup_filter_ == C_NONE);
+  tally->set_scores({"nu-fission", "absorption"});
+  REQUIRE(tally->scores_.size() == 2);
 }

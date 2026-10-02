@@ -28,7 +28,7 @@ _FILTER_TYPES = (
     'spatiallegendre', 'sphericalharmonics', 'zernike', 'zernikeradial', 'particle',
     'particleproduction', 'cellinstance', 'collision', 'time', 'parentnuclide',
     'weight', 'meshborn', 'meshsurface', 'meshmaterial', 'reaction',
-    'lifetimemoment',
+    'lifetimemoment', 'delayedgroupborn',
 )
 
 def _mesh_current_names(mesh):
@@ -2544,6 +2544,67 @@ class DelayedGroupFilter(Filter):
         # Check the bin values.
         for g in bins:
             cv.check_greater_than('delayed group', g, 0)
+
+
+class DelayedGroupBornFilter(Filter):
+    r"""Bins tally events by the delayed group the particle was born from.
+
+    The bin of an event is the delayed group of the source site that the
+    scoring particle was started from: 0 for a neutron born prompt and
+    :math:`g = 1, 2, \ldots` for a delayed neutron emitted by a precursor of
+    delayed group :math:`g`. In an eigenvalue calculation, the source sites
+    are the fission sites of the previous generation, so the filter separates
+    the events caused by prompt neutrons from those caused by the delayed
+    neutrons of each precursor group. The group is constant along a history,
+    so the filter can be used with any estimator and any score.
+
+    Particles started from sites that are not fission sites count as born
+    prompt (group 0): external source particles, and also the extra neutrons
+    of (n,xn) reactions and particles created by weight-window splitting,
+    which restart from a site at the collision or split that created them.
+    This is a limitation, shared with :class:`openmc.MeshBornFilter` and
+    :class:`openmc.LifetimeMomentFilter`, that moves the contributions of the
+    secondary and split particles of a delayed neutron to the prompt bin; see
+    :ref:`usersguide_delayed_group_born`.
+
+    Unlike :class:`openmc.DelayedGroupFilter`, which bins the delayed fission
+    neutrons *produced* in an event by their precursor group, this filter bins
+    the event by the group of the *incident* particle's birth. The two can be
+    combined, e.g. with the ``delayed-nu-fission`` score.
+
+    .. versionadded:: 0.16.1
+
+    Parameters
+    ----------
+    bins : iterable of int
+        Distinct birth delayed groups, each between 0 (born prompt) and the
+        maximum number of delayed groups (8). For example, the prompt-born
+        neutrons and the delayed neutrons of the 6 precursor groups of
+        ENDF/B-VII.1 are selected with bins = [0, 1, 2, 3, 4, 5, 6].
+    filter_id : int
+        Unique identifier for the filter
+
+    Attributes
+    ----------
+    bins : iterable of int
+        Distinct birth delayed groups, with 0 meaning born prompt
+    id : int
+        Unique identifier for the filter
+    num_bins : Integral
+        The number of filter bins
+
+    """
+
+    def check_bins(self, bins):
+        for g in bins:
+            cv.check_type('birth delayed group', g, Integral)
+            cv.check_greater_than('birth delayed group', g, 0, equality=True)
+            cv.check_less_than('birth delayed group', g,
+                               openmc.mgxs.MAX_DELAYED_GROUPS, equality=True)
+        if len(set(int(g) for g in bins)) != len(bins):
+            raise ValueError(
+                f'Birth delayed groups of a DelayedGroupBornFilter must be '
+                f'distinct: {list(bins)}')
 
 
 class EnergyFunctionFilter(Filter):

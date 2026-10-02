@@ -68,6 +68,7 @@ Classes
    CellfromFilter
    CollisionFilter
    CylindricalMesh
+   DelayedGroupBornFilter
    DelayedGroupFilter
    DistribcellFilter
    EnergyFilter

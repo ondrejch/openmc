@@ -139,6 +139,62 @@ For each element pair, the ratio of bin 1 to bin 0 is the mean time from the
 birth of a neutron to the fission neutrons it produces, and bin 2 provides the
 second moment needed, for example, for the variance of that time.
 
+.. _usersguide_delayed_group_born:
+
+Events by Birth Delayed Group
+-----------------------------
+
+The :class:`openmc.DelayedGroupBornFilter` bins the events of a tally by the
+delayed group of the source site that the scoring particle was started from.
+Bin value 0 selects neutrons born prompt, and a value :math:`g \ge 1` selects
+delayed neutrons emitted by precursors of delayed group :math:`g`. In an
+eigenvalue calculation, the source sites of a generation are the fission sites
+banked in the previous one, so the filter separates the contributions of the
+prompt neutrons from those of the delayed neutrons of each precursor group::
+
+  born_group = openmc.DelayedGroupBornFilter([0, 1, 2, 3, 4, 5, 6])
+
+The birth delayed group is fixed when the particle is started from its site
+and does not change along the history, so the filter can be combined with any
+score and any estimator. It differs from :class:`openmc.DelayedGroupFilter`,
+which bins the delayed neutrons *produced* in an event by their precursor
+group and is restricted to a few scores. The two filters can be combined; for
+example, the following tally gives, for each pair of mesh elements, the fission
+neutron production by neutrons born in one element, separately for the prompt
+and each group of delayed neutrons, together with the delayed production of
+each precursor group by neutrons of each birth group::
+
+  born = openmc.MeshBornFilter(mesh)
+  where = openmc.MeshFilter(mesh)
+
+  tally = openmc.Tally(name='fission matrix by birth group')
+  tally.filters = [born_group, born, where]
+  tally.scores = ['nu-fission', 'prompt-nu-fission']
+
+  delayed = openmc.Tally(name='delayed production by birth group')
+  delayed.filters = [born_group, born, where,
+                     openmc.DelayedGroupFilter([1, 2, 3, 4, 5, 6])]
+  delayed.scores = ['delayed-nu-fission']
+
+Because every source site carries exactly one delayed group, the bins of a
+filter that lists all groups, from 0 to the number of delayed groups in the
+data, add up to the tally without the filter.
+
+.. note:: Particles started from sites that are not fission sites count as
+   born prompt (group 0). Besides external source particles, these are the
+   additional neutrons of :math:`(n,xn)` reactions and the particles created
+   by weight-window splitting, which restart from a site at the collision or
+   split that created them instead of keeping the delayed group of the
+   neutron of the source site. This is a limitation of the implementation,
+   shared with the birth position and birth cell used by
+   :class:`openmc.MeshBornFilter` and :class:`openmc.CellBornFilter` and with
+   the time since birth used by :class:`openmc.LifetimeMomentFilter`: when
+   such reactions or weight windows are present, the contributions of the
+   secondary and split particles of a delayed neutron are moved to the prompt
+   bin. A fixed-source calculation that starts from a source file of fission
+   sites, or that transports fission neutrons, uses the delayed groups of
+   those sites.
+
 .. _usersguide_scores:
 
 ------
