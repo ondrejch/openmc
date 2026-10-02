@@ -1645,6 +1645,26 @@ Agency Monte Carlo Performance Benchmark Problem," Proceedings of *Physor 2012*,
 Knoxville, TN (2012). The mesh should cover all possible fissionable materials
 in the problem and is specified using a :ref:`mesh_element`.
 
+-------------------------
+``<birth_mesh>`` Element
+-------------------------
+
+The ``<birth_mesh>`` element indicates the ID of a mesh used to tag banked
+fission sites for post-processing of fission-matrix and fission-to-fission
+time data. When this element is present, every site banked during an
+eigenvalue calculation is tagged with the bin of the *birth position of the
+neutron that produced the site* (matching the binning used by the
+:ref:`mesh born filter <meshbornfilter>`); sites whose creating neutron was
+born outside the mesh are tagged with ``-1``. The mesh must be defined in the
+same settings file using a :ref:`mesh_element`.
+
+The tags are written to statepoints (and source files) as a ``birth_mesh_bin``
+dataset aligned by index with the ``source_bank`` dataset; the referenced
+mesh ID is recorded in a ``birth_mesh_id`` attribute. The delayed group and
+time of each banked site are available in the ``source_bank`` compound type
+itself. Enabling birth tagging does not change the transport physics or any
+tally result: the tags consume no random numbers and alter no scoring.
+
 -------------------------------
 ``<use_decay_photons>`` Element
 -------------------------------

@@ -113,6 +113,8 @@ int max_particle_events {1000000};
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
 array<double, 4> time_cutoff {INFTY, INFTY, INFTY, INFTY};
+int birth_mesh_id {0};
+const RegularMesh* birth_mesh {nullptr};
 int ifp_n_generation {-1};
 int legendre_to_tabular_points {C_NONE};
 int max_order {0};
@@ -881,6 +883,25 @@ void read_settings_xml(pugi::xml_node root)
       "it by specifying its ID in a <ufs_mesh> element.");
   }
 
+  // Fission bank birth-tag mesh: banked fission sites are tagged with the bin
+  // of the creating neutron's birth position in this mesh. The mesh must be
+  // defined in settings.xml (read above).
+  if (check_for_node(root, "birth_mesh")) {
+    auto temp = std::stoi(get_node_value(root, "birth_mesh"));
+    if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+      fatal_error(fmt::format("Mesh {} specified for fission bank birth "
+                              "tagging does not exist.",
+        temp));
+    }
+
+    auto* m =
+      dynamic_cast<RegularMesh*>(model::meshes[model::mesh_map.at(temp)].get());
+    if (!m)
+      fatal_error("Only regular meshes can be used as a birth mesh");
+    birth_mesh_id = temp;
+    birth_mesh = m;
+  }
+
   // Check if the user has specified to write state points
   if (check_for_node(root, "state_point")) {
 
@@ -1379,6 +1400,8 @@ void free_memory_settings()
   settings::track_identifiers.clear();
   settings::ifp_delayed_group_on = false;
   settings::ifp_lifetime_on = false;
+  settings::birth_mesh_id = 0;
+  settings::birth_mesh = nullptr;
 }
 
 //==============================================================================

@@ -372,6 +372,16 @@ class StatePoint:
         return self._f['source_bank'][()] if self.source_present else None
 
     @property
+    def birth_mesh_bin(self):
+        """Birth mesh bin tag for each banked fission site, or None if
+        fission bank tagging was not enabled for the run. For a site, the
+        tag is the bin of the birth position of the neutron that produced
+        the site, in the mesh referenced by the 'birth_mesh_id' attribute."""
+        if self.source_present and 'birth_mesh_bin' in self._f:
+            return self._f['birth_mesh_bin'][()]
+        return None
+
+    @property
     def source_present(self):
         return self._f.attrs['source_present'] > 0
 

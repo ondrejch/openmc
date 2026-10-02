@@ -56,6 +56,11 @@ struct SourceSite {
   double wgt_ww_born {-1.0};
   int64_t n_split {0};
   int n_collision {0};
+  // Fission bank tag: bin of the creating neutron's birth position in the
+  // mesh specified by the <birth_mesh> settings element (-1 if the position
+  // falls outside the mesh). Written to statepoints as the separate
+  // "birth_mesh_bin" dataset when the feature is enabled.
+  int birth_mesh_bin {-1};
 };
 
 struct CollisionTrackSite {

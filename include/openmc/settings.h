@@ -46,7 +46,14 @@ struct CollisionTrackConfig {
 // Global variable declarations
 //==============================================================================
 
+class RegularMesh;
+
 namespace settings {
+
+// Fission bank birth tagging
+extern int birth_mesh_id;              //!< Mesh ID used to tag banked fission
+                                       //!< sites (0: no tagging)
+extern const RegularMesh* birth_mesh;  //!< Resolved birth-tag mesh
 
 // Boolean flags
 extern bool assume_separate;      //!< assume tallies are spatially separate?

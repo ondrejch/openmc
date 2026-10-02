@@ -58,6 +58,12 @@ The current version of the statepoint file format is 18.2.
              time, weight, delayed group, surface ID, and particle type
              (PDG number), respectively. Only present when `run_mode` is
              'eigenvalue'.
+           - **birth_mesh_bin** (*int[]*) -- Fission bank birth tags, aligned
+             by index with ``source_bank``: the bin of the birth position of
+             the neutron that produced each site, in the mesh referenced by
+             the ``birth_mesh_id`` attribute (``-1`` if outside that mesh).
+             Only present when the ``<birth_mesh>`` settings element was
+             specified in the settings input and ``source_bank`` is present.
 
 **/tallies/**
 

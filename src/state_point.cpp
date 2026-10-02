@@ -123,6 +123,10 @@ extern "C" int openmc_statepoint_write(const char* filename, bool* write_source)
     // Indicate whether source bank is stored in statepoint
     write_attribute(file_id, "source_present", write_source_);
 
+    // Record the mesh used for fission bank birth tags, if any
+    if (settings::birth_mesh)
+      write_attribute(file_id, "birth_mesh_id", settings::birth_mesh_id);
+
     // Write out information for eigenvalue run
     if (settings::run_mode == RunMode::EIGENVALUE)
       write_eigenvalue_hdf5(file_id);
@@ -648,6 +652,8 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
     file_id = file_open(filename_.c_str(), 'w', true);
     write_attribute(file_id, "filetype", "source");
     write_attribute(file_id, "version", VERSION_STATEPOINT);
+    if (settings::birth_mesh)
+      write_attribute(file_id, "birth_mesh_id", settings::birth_mesh_id);
   }
 
   // Get pointer to source bank and write to file
@@ -655,6 +661,89 @@ void write_h5_source_point(const char* filename, span<SourceSite> source_bank,
 
   if (mpi::master || parallel)
     file_close(file_id);
+}
+
+// Write the "birth_mesh_bin" tag dataset, aligned by index with the
+// "source_bank" dataset. Uses the same distribution pattern as
+// write_bank_dataset (bank_io.h), but for a plain int32 value per site.
+void write_birth_mesh_bin_dataset(hid_t group_id,
+  span<const SourceSite> source_bank, const vector<int64_t>& bank_index)
+{
+  // Collect the local tag values
+  vector<int32_t> birth_bins(source_bank.size());
+  for (int64_t i = 0; i < source_bank.size(); ++i) {
+    birth_bins[i] = source_bank[i].birth_mesh_bin;
+  }
+
+  int64_t dims_size = bank_index.back();
+
+#ifdef PHDF5
+  int64_t count_size = bank_index[mpi::rank + 1] - bank_index[mpi::rank];
+  hsize_t dims[] {static_cast<hsize_t>(dims_size)};
+  hid_t dspace = H5Screate_simple(1, dims, nullptr);
+  hid_t dset = H5Dcreate(group_id, "birth_mesh_bin", H5T_NATIVE_INT32, dspace,
+    H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+  hsize_t count[] {static_cast<hsize_t>(count_size)};
+  hid_t memspace = H5Screate_simple(1, count, nullptr);
+
+  hsize_t start[] {static_cast<hsize_t>(bank_index[mpi::rank])};
+  H5Sselect_hyperslab(dspace, H5S_SELECT_SET, start, nullptr, count, nullptr);
+
+  hid_t plist = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
+
+  H5Dwrite(dset, H5T_NATIVE_INT32, memspace, dspace, plist, birth_bins.data());
+
+  H5Sclose(dspace);
+  H5Sclose(memspace);
+  H5Dclose(dset);
+  H5Pclose(plist);
+#else
+  if (mpi::master) {
+    hsize_t dims[] {static_cast<hsize_t>(dims_size)};
+    hid_t dspace = H5Screate_simple(1, dims, nullptr);
+    hid_t dset = H5Dcreate(group_id, "birth_mesh_bin", H5T_NATIVE_INT32, dspace,
+      H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    for (int i = 0; i < mpi::n_procs; ++i) {
+      hsize_t count[] {static_cast<hsize_t>(bank_index[i + 1] - bank_index[i])};
+      hid_t memspace = H5Screate_simple(1, count, nullptr);
+
+      const int32_t* data_ptr = birth_bins.data();
+      vector<int32_t> recv_buf;
+#ifdef OPENMC_MPI
+      if (i != mpi::rank) {
+        recv_buf.resize(count[0]);
+        MPI_Recv(recv_buf.data(), count[0], MPI_INT32_T, i, i, mpi::intracomm,
+          MPI_STATUS_IGNORE);
+        data_ptr = recv_buf.data();
+      }
+#endif
+
+      hid_t dspace_rank = H5Dget_space(dset);
+      hsize_t start[] {static_cast<hsize_t>(bank_index[i])};
+      H5Sselect_hyperslab(
+        dspace_rank, H5S_SELECT_SET, start, nullptr, count, nullptr);
+
+      H5Dwrite(dset, H5T_NATIVE_INT32, memspace, dspace_rank, H5P_DEFAULT,
+        data_ptr);
+
+      H5Sclose(memspace);
+      H5Sclose(dspace_rank);
+    }
+
+    H5Dclose(dset);
+  }
+#ifdef OPENMC_MPI
+  else {
+    if (!birth_bins.empty()) {
+      MPI_Send(birth_bins.data(), birth_bins.size(), MPI_INT32_T, 0, mpi::rank,
+        mpi::intracomm);
+    }
+  }
+#endif
+#endif
 }
 
 void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
@@ -670,6 +759,11 @@ void write_source_bank(hid_t group_id, span<SourceSite> source_bank,
   write_bank_dataset("source_bank", group_id, source_bank, bank_index,
     membanktype, filebanktype);
 #endif
+
+  // Write the birth mesh bin tag dataset, aligned by index with the
+  // "source_bank" dataset, when fission bank tagging is enabled
+  if (settings::birth_mesh)
+    write_birth_mesh_bin_dataset(group_id, source_bank, bank_index);
 
   H5Tclose(membanktype);
   H5Tclose(filebanktype);
@@ -764,6 +858,58 @@ void read_source_bank(
     H5Sclose(memspace);
   H5Dclose(dset);
   H5Tclose(banktype);
+
+  // Read the birth mesh bin tag dataset, when present, to keep the tags
+  // aligned with the source sites (e.g. for restart runs)
+  if (object_exists(group_id, "birth_mesh_bin")) {
+    hid_t dset_bin = H5Dopen(group_id, "birth_mesh_bin", H5P_DEFAULT);
+
+    hid_t dspace_bin = H5Dget_space(dset_bin);
+    hsize_t n_bins;
+    H5Sget_simple_extent_dims(dspace_bin, &n_bins, nullptr);
+    if (n_bins < sites.size()) {
+      fatal_error("birth_mesh_bin dataset in source file is smaller than "
+                  "the source bank.");
+    }
+
+    // Allocate tag storage matching the sites that were read
+    vector<int32_t> birth_bins(distribute ? simulation::work_per_rank
+                                          : sites.size());
+
+    hid_t memspace_bin;
+    if (distribute) {
+      hsize_t n_sites_local = simulation::work_per_rank;
+      memspace_bin = H5Screate_simple(1, &n_sites_local, nullptr);
+
+      // Select hyperslab for each process
+      hsize_t offset = simulation::work_index[mpi::rank];
+      H5Sselect_hyperslab(
+        dspace_bin, H5S_SELECT_SET, &offset, nullptr, &n_sites_local, nullptr);
+    } else {
+      memspace_bin = H5S_ALL;
+    }
+
+#ifdef PHDF5
+    // Read data in parallel
+    hid_t plist = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist, H5FD_MPIO_COLLECTIVE);
+    H5Dread(dset_bin, H5T_NATIVE_INT32, memspace_bin, dspace_bin, plist,
+      birth_bins.data());
+    H5Pclose(plist);
+#else
+    H5Dread(dset_bin, H5T_NATIVE_INT32, memspace_bin, dspace_bin, H5P_DEFAULT,
+      birth_bins.data());
+#endif
+
+    for (int64_t i = 0; i < sites.size(); ++i) {
+      sites[i].birth_mesh_bin = birth_bins[i];
+    }
+
+    H5Sclose(dspace_bin);
+    if (distribute)
+      H5Sclose(memspace_bin);
+    H5Dclose(dset_bin);
+  }
 
   if (legacy_particle_codes) {
     for (auto& site : sites) {
