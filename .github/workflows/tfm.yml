@@ -1,0 +1,102 @@
+name: TFM tallies
+
+on:
+  push:
+    branches:
+      - tfm-tallies
+  workflow_dispatch:
+
+concurrency:
+  group: tfm-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OMP_NUM_THREADS: "2"
+  CCACHE_MAXSIZE: 2G
+
+jobs:
+  tfm:
+    name: "TFM tally filters (python 3.12, omp, no mpi)"
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.31'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Environment Variables
+        run: |
+          echo "OPENMC_CROSS_SECTIONS=$HOME/nndc_hdf5/cross_sections.xml" >> $GITHUB_ENV
+          echo "OPENMC_ENDF_DATA=$HOME/endf-b-vii.1" >> $GITHUB_ENV
+
+      - name: Apt dependencies
+        run: |
+          sudo apt -y update
+          sudo apt install -y ccache \
+                              libpng-dev \
+                              libnetcdf-dev \
+                              libpnetcdf-dev \
+                              libhdf5-serial-dev \
+                              libeigen3-dev
+
+      - name: ccache
+        uses: actions/cache@v5
+        with:
+          path: ~/.ccache
+          key: ${{ runner.os }}-tfm-ccache-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-tfm-ccache-
+
+      - name: cache-xs
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/nndc_hdf5
+            ~/endf-b-vii.1
+          key: ${{ runner.os }}-build-xs-cache-${{ hashFiles(format('{0}/tools/ci/download-xs.sh', github.workspace)) }}
+
+      - name: Download cross sections
+        run: tools/ci/download-xs.sh
+
+      - name: Build and install OpenMC
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build build --parallel $(nproc)
+          sudo cmake --install build
+
+      - name: Install Python API
+        run: |
+          pip install --upgrade pip
+          pip install -e .[test]
+
+      - name: display-config
+        run: openmc -v
+
+      - name: C++ unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: TFM Python unit tests
+        run: |
+          pytest -v \
+            tests/unit_tests/test_filter_delayedgroupborn.py \
+            tests/unit_tests/test_filter_lifetime_moment.py \
+            tests/unit_tests/test_settings.py \
+            tests/unit_tests/test_statepoint.py
+
+      - name: TFM regression tests
+        run: |
+          pytest -v \
+            tests/regression_tests/birth_mesh \
+            tests/regression_tests/delayed_group_born \
+            tests/regression_tests/lifetime_moment
